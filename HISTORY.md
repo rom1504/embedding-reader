@@ -1,3 +1,8 @@
 ## 1.0.0
 
-* it works
+implementation: it works
+
+* numpy and parquet parallel reader
+* piece builder
+* doc
+* tests

@@ -34,18 +34,18 @@ for emb, meta in embedding_reader(batch_size=10 ** 6, start=0, end=embedding_rea
 ## Who is using embedding reader?
 
 Some use cases of embedding reader include:
-* building knn indices in autofaiss
+* building knn indices in [autofaiss](https://github.com/criteo/autofaiss)
 * computing zero shot attributes using clip
 * running training or inferences of linear layer models on top of embeddings
 
 Embeddings are a powerful concept, they allow turning highly complex data into point in a linearly separable space.
 Embeddings are also much smaller and more efficient to manipulate than usual data (images, audio, video, text, interaction items, ...)
 
-To learn more about embeddings read [Semantic search]
+To learn more about embeddings read [Semantic search blogpost](https://rom1504.medium.com/semantic-search-with-embeddings-index-anything-8fb18556443c)
 
 ## File system support
 
-Thanks to [fsspec](https://filesystem-spec.readthedocs.io/en/latest/), img2dataset supports reading and writing files in [many file systems](https://github.com/fsspec/filesystem_spec/blob/6233f315548b512ec379323f762b70764efeb92c/fsspec/registry.py#L87).
+Thanks to [fsspec](https://filesystem-spec.readthedocs.io/en/latest/), embedding_reader supports reading and writing files in [many file systems](https://github.com/fsspec/filesystem_spec/blob/6233f315548b512ec379323f762b70764efeb92c/fsspec/registry.py#L87).
 To use it, simply use the prefix of your filesystem before the path. For example `hdfs://`, `s3://`, `http://`, or `gcs://`.
 Some of these file systems require installing an additional package (for example s3fs for s3, gcsfs for gcs).
 See fsspec doc for all the details.

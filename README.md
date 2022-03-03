@@ -91,7 +91,7 @@ Produces an iterator that yields tuples (data, meta) with the given batch_size
 * **start** start of the subset of the collection to read. (default *0*)
 * **end** end of the subset of the collection to read. (default *end of collection*)
 * **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *number of embedding for 50MB*)
-* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *10*)
+* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *max(10, min amount of pieces to build a batch)*)
 * **show_progress** Display a tqdm bar with the number of pieces done. (default *True*)
 
 

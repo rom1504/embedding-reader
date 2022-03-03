@@ -12,6 +12,7 @@ from multiprocessing.pool import ThreadPool
 from tqdm import tqdm
 import numpy as np
 import re
+import math
 from collections import namedtuple
 from embedding_reader.get_file_list import get_file_list
 from embedding_reader.piece_builder import build_pieces
@@ -66,7 +67,7 @@ class NumpyReader:
 
         self.headers = df
 
-    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10, show_progress=True):
+    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
         if end is None:
             end = self.headers["count"].sum()
 
@@ -75,9 +76,11 @@ class NumpyReader:
         if batch_size > end - start:
             batch_size = end - start
 
-        parallel_pieces = 10
         if max_piece_size is None:
             max_piece_size = max(int(50 * 10 ** 6 / (self.byte_per_item)), 1)
+        if parallel_pieces is None:
+            parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
+        
 
         pieces = build_pieces(
             headers=self.headers,

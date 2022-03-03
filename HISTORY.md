@@ -1,3 +1,7 @@
+## 1.1.1
+
+* improve default amount of parallel pieces
+
 ## 1.1.0
 
 * add show progress option

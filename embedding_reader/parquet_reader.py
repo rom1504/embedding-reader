@@ -1,0 +1,140 @@
+"""Parquet embedding reader, read embeddings from parquet files in streaming"""
+
+import pandas as pd
+from multiprocessing.pool import ThreadPool
+from tqdm import tqdm
+import numpy as np
+import pyarrow.parquet as pq
+from collections import namedtuple
+from embedding_reader.get_file_list import get_file_list
+from embedding_reader.piece_builder import build_pieces
+from threading import Semaphore
+
+
+class ParquetReader:
+    """Parquet reader class, implements init to read the files headers and call to procuce embeddings batches"""
+
+    def __init__(self, embeddings_folder, embedding_column_name, metadata_column_names=None):
+        self.embeddings_folder = embeddings_folder
+        self.fs, embeddings_file_paths = get_file_list(embeddings_folder, "parquet")
+
+        self.metadata_column_names = metadata_column_names
+        self.embedding_column_name = embedding_column_name
+
+        # read one non empty file to get the dimension
+        for filename in embeddings_file_paths:
+            with self.fs.open(filename, "rb") as f:
+                parquet_file = pq.ParquetFile(f, memory_map=True)
+                batches = parquet_file.iter_batches(batch_size=1, columns=[embedding_column_name])
+                try:
+                    embedding = next(batches).to_pandas()[embedding_column_name].to_numpy()[0]
+                    self.dimension = int(embedding.shape[0])
+                    break
+                except StopIteration:
+                    continue
+
+        def file_to_header(filename):
+            with self.fs.open(filename, "rb") as f:
+                parquet_file = pq.ParquetFile(f, memory_map=True)
+                return [filename, parquet_file.metadata.num_rows]
+
+        headers = []
+        count_before = 0
+        with ThreadPool(10) as p:
+            for c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+                headers.append([*c, count_before])
+                count_before += c[1]
+
+        df = pd.DataFrame(headers, columns=["filename", "count", "count_before"])
+        self.count = df["count"].sum()
+        if self.count == 0:
+            raise ValueError("No embeddings found in folder {}".format(embeddings_folder))
+        self.byte_per_item = 4 * self.dimension
+
+        self.total_size = self.count * self.byte_per_item
+
+        self.headers = df
+
+    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10):
+        if end is None:
+            end = self.headers["count"].sum()
+
+        if end > self.count:
+            end = self.count
+        if batch_size > end - start:
+            batch_size = end - start
+
+        parallel_pieces = 10
+        if max_piece_size is None:
+            max_piece_size = max(batch_size // parallel_pieces, 1)
+
+        pieces = build_pieces(
+            headers=self.headers, batch_size=batch_size, start=start, end=end, max_piece_size=max_piece_size
+        )
+
+        cols = [
+            "filename",
+            "piece_start",
+            "piece_end",
+            "piece_length",
+            "batch_id",
+            "batch_start",
+            "batch_end",
+            "batch_length",
+            "last_piece",
+        ]
+        Piece = namedtuple("Count", cols)
+
+        def read_piece(piece):
+            start = piece.piece_start
+            end = piece.piece_end
+            path = piece.filename
+
+            with self.fs.open(path, "rb") as f:
+                length = end - start
+                table = pq.read_table(f)
+                id_columns = self.metadata_column_names
+                table_slice = table.slice(start, length)
+                embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
+                ids = table_slice.select(id_columns).to_pandas() if id_columns else None
+
+                return (
+                    np.stack(embeddings_raw),
+                    ids,
+                    piece,
+                )
+
+        semaphore = Semaphore(parallel_pieces)
+
+        def piece_generator(pieces):
+            for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
+                semaphore.acquire()
+                yield piece
+
+        batch = None
+        batch_meta = None
+        batch_offset = 0
+        with ThreadPool(parallel_pieces) as p:
+            for data, meta, piece in p.imap(read_piece, piece_generator(pieces)):
+                if batch is None:
+                    batch = np.empty((piece.batch_length, self.dimension), "float32")
+                    if self.metadata_column_names is not None:
+                        batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names) + 1), dtype="object")
+                batch[batch_offset : (batch_offset + piece.piece_length)] = data
+                if self.metadata_column_names is not None:
+                    batch_meta[batch_offset : (batch_offset + piece.piece_length)] = meta.to_numpy()
+                batch_offset += data.shape[0]
+                if piece.last_piece:
+                    if self.metadata_column_names is not None:
+                        meta_batch_df = pd.DataFrame(
+                            batch_meta, columns=self.metadata_column_names + ["i"]
+                        ).infer_objects()
+                        meta_batch_df["i"] = np.arange(start=piece.batch_start, stop=piece.batch_end)
+                    else:
+                        meta_batch_df = None
+                    yield batch, meta_batch_df
+                    batch = None
+                    if self.metadata_column_names is not None:
+                        batch_meta = None
+                    batch_offset = 0
+                semaphore.release()

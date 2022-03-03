@@ -77,7 +77,7 @@ class NumpyReader:
 
         parallel_pieces = 10
         if max_piece_size is None:
-            max_piece_size = max(batch_size // parallel_pieces, 1)
+            max_piece_size = max(int(50 * 10 ** 6 / (self.byte_per_item)), 1)
 
         pieces = build_pieces(
             headers=self.headers,

@@ -66,7 +66,7 @@ class NumpyReader:
 
         self.headers = df
 
-    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10):
+    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10, show_progress=True):
         if end is None:
             end = self.headers["count"].sum()
 
@@ -128,6 +128,8 @@ class NumpyReader:
         batch = None
         batch_offset = 0
 
+        if show_progress:
+            pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
             for data, piece in p.imap(read_piece, piece_generator(pieces)):
                 if batch is None:
@@ -140,4 +142,9 @@ class NumpyReader:
                     batch = None
                     batch_offset = 0
 
+                if show_progress:
+                    pbar.update(1)
                 semaphore.release()
+
+        if show_progress:
+            pbar.close()

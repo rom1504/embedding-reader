@@ -18,17 +18,16 @@ Checkout these examples to call this as a lib:
 * [example.py](examples/example.py)
 
 ```python
-from embedding_reader import Reader
-from tqdm import tqdm
+from embedding_reader import EmbeddingReader
 
-reader = EmbeddingReader(embeddings_folder="embedding_folder", file_format="npy")
+embedding_reader = EmbeddingReader(embeddings_folder="embedding_folder", file_format="npy")
 
-print("embedding count", reader.count)
-print("dimension", reader.dimension)
-print("total size", reader.total_size)
-print("byte per item", reader.byte_per_item)
+print("embedding count", embedding_reader.count)
+print("dimension", embedding_reader.dimension)
+print("total size", embedding_reader.total_size)
+print("byte per item", embedding_reader.byte_per_item)
 
-for emb, meta in tqdm(reader(batch_size=10 ** 6, start=0, end=reader.count), total=reader.count // 10 ** 6):
+for emb, meta in embedding_reader(batch_size=10 ** 6, start=0, end=embedding_reader.count):
     print(emb.shape)
 ```
 
@@ -84,7 +83,7 @@ size of one embedding in bytes
 
 size in bytes of the collection
 
-#### __call__(batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10)
+#### __call__(batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10, show_progress=True)
 
 Produces an iterator that yields tuples (data, meta) with the given batch_size
 
@@ -93,6 +92,7 @@ Produces an iterator that yields tuples (data, meta) with the given batch_size
 * **end** end of the subset of the collection to read. (default *end of collection*)
 * **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *batch size / parallel_pieces*)
 * **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *10*)
+* **show_progress** Display a tqdm bar with the number of pieces done. (default *True*)
 
 
 ## Architecture notes and benchmark

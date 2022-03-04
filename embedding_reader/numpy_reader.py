@@ -53,19 +53,18 @@ class NumpyReader:
                 headers.append([*c[0:2], count_before, *c[2:]])
                 count_before += c[1]
 
-        df = pd.DataFrame(
+        self.headers = pd.DataFrame(
             headers,
             columns=["filename", "count", "count_before", "dimension", "dtype", "header_offset", "byte_per_item"],
         )
-        self.count = df["count"].sum()
+
+        self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError("No embeddings found in folder {}".format(embeddings_folder))
-        self.dimension = int(df.iloc[0]["dimension"])
-        self.byte_per_item = df.iloc[0]["byte_per_item"]
-        self.dtype = df.iloc[0]["dtype"]
+        self.dimension = int(self.headers.iloc[0]["dimension"])
+        self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
+        self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
-
-        self.headers = df
 
     def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
         if end is None:

@@ -25,12 +25,13 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
     items = [filecount(*args) for args in zip(*[headers[col] for col in columns])]
 
     header_i = 0
-    while header_i < len(items) and items[header_i].count_before < start:
+    while header_i < len(items) and items[header_i].count_before + items[header_i].count < start:
+        header_i += 1
         continue
 
-    read_current_file = 0
+    # we skipped start-count_before from the first file
+    read_current_file = start - items[header_i].count_before
     read_current_batch = 0
-    read_from_beginning = 0
     pieces = []
 
     for batch_id, batch_start in enumerate(range(start, end, batch_size)):
@@ -41,12 +42,11 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
             count_before = items[header_i].count_before
             count = items[header_i].count
             piece_start = batch_start + read_current_batch - count_before
-            piece_length = min(count - read_current_file, batch_length - read_current_batch, max_piece_size)
+            piece_length = min(count - piece_start, batch_length - read_current_batch, max_piece_size)
             piece_end = piece_start + piece_length
 
             read_current_file += piece_length
             read_current_batch += piece_length
-            read_from_beginning += piece_length
             piece_filename = items[header_i].filename
             last_piece = read_current_batch == batch_length
             batch_end = batch_start + batch_length

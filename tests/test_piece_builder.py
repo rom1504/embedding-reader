@@ -3,6 +3,7 @@ from embedding_reader.piece_builder import build_pieces
 
 import numpy as np
 import random
+import pytest
 import pandas as pd
 
 
@@ -12,35 +13,46 @@ def build_random_filecounts():
     for i in range(1000):
         r = random.randint(100, 10000)
         results.append([r, count_before, str(i) + ".npy", "someval" + str(i)])
+        count_before += r
 
     return pd.DataFrame(results, columns=["count", "count_before", "filename", "custommeta"])
 
 
-def test_piece_builder():
+@pytest.mark.parametrize(["start", "end"], [(0, 100000), (100, 100000), (10000, 300000)])
+def test_piece_builder(start, end):
     # generate random file counts
     # call piece builder
     # check sum is correct
-    # check group by file is fully correct
     # check each piece has a reasonable size
 
     batch_size = 1000
-    start = 0
-    end = 10000
     max_piece_size = 100
 
     file_counts = build_random_filecounts()
     pieces = build_pieces(
         file_counts, batch_size, start, end, max_piece_size=max_piece_size, metadata_columns=["custommeta"]
     )
-    pieces["piece_length"].sum() == file_counts["count"].sum()
+    assert pieces["piece_length"].sum() == end - start
 
-    # check group by filename of pieces is the same as file_counts
-    pieces_grouped = pieces.groupby("filename")
-    file_counts_grouped = file_counts.groupby("filename")
-    for filename, pieces_group in pieces_grouped:
-        file_counts_group = file_counts_grouped.get_group(filename)
-        pieces_group["piece_length"].sum() == file_counts_group["count"].sum()
-        pieces_group["custommeta"].values == file_counts_group["custommeta"].values
+    filename_to_count = {filename: count for count, filename in zip(file_counts["count"], file_counts["filename"])}
+
+    for piece_start, piece_end, piece_length, batch_start, batch_end, batch_length, filename in zip(
+        pieces["piece_start"],
+        pieces["piece_end"],
+        pieces["piece_length"],
+        pieces["batch_start"],
+        pieces["batch_end"],
+        pieces["batch_length"],
+        pieces["filename"],
+    ):
+        assert piece_length <= max_piece_size
+        assert piece_start >= 0
+        assert piece_start < piece_end
+        assert batch_start < batch_end
+        assert batch_length <= batch_size
+        assert batch_end <= end
+        assert batch_end - batch_start <= batch_size
+        assert piece_end <= filename_to_count[filename]
 
     # check each piece has a reasonable size
-    pieces["piece_length"].max() <= max_piece_size
+    assert pieces["piece_length"].max() <= max_piece_size

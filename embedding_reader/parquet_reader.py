@@ -46,15 +46,13 @@ class ParquetReader:
                 headers.append([*c, count_before])
                 count_before += c[1]
 
-        df = pd.DataFrame(headers, columns=["filename", "count", "count_before"])
-        self.count = df["count"].sum()
+        self.headers = pd.DataFrame(headers, columns=["filename", "count", "count_before"])
+        self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError("No embeddings found in folder {}".format(embeddings_folder))
         self.byte_per_item = 4 * self.dimension
 
         self.total_size = self.count * self.byte_per_item
-
-        self.headers = df
 
     def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
         if end is None:

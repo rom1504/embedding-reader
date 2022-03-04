@@ -39,6 +39,9 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
 
         # building all pieces of this batch
         while header_i < len(items) and read_current_batch < batch_length:
+            if items[header_i].count == 0:
+                header_i += 1
+                continue
             count_before = items[header_i].count_before
             count = items[header_i].count
             piece_start = batch_start + read_current_batch - count_before

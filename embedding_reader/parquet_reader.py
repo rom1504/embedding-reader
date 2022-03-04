@@ -43,6 +43,8 @@ class ParquetReader:
         count_before = 0
         with ThreadPool(10) as p:
             for c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+                if c[1] == 0:
+                    continue
                 headers.append([*c, count_before])
                 count_before += c[1]
 

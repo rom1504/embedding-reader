@@ -1,3 +1,7 @@
+## 1.1.4
+
+* fix numpy reader handling of empty files
+
 ## 1.1.3
 
 * check the empty file edge case in both piece builder and parquet reader

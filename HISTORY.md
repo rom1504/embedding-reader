@@ -1,3 +1,7 @@
+## 1.1.2
+
+* improve piece builder test and fix the function
+
 ## 1.1.1
 
 * improve default amount of parallel pieces

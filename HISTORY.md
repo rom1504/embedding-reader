@@ -1,3 +1,7 @@
+## 1.1.3
+
+* check the empty file edge case in both piece builder and parquet reader
+
 ## 1.1.2
 
 * improve piece builder test and fix the function

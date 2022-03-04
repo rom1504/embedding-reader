@@ -48,7 +48,7 @@ class NumpyReader:
         count_before = 0
         with ThreadPool(10) as p:
             for c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
-                if c[0] == 0:
+                if c[1] == 0:
                     continue
                 headers.append([*c[0:2], count_before, *c[2:]])
                 count_before += c[1]

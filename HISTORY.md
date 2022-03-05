@@ -1,3 +1,7 @@
+## 1.1.5
+
+* Fix some edges cases and clean some codes
+
 ## 1.1.4
 
 * fix numpy reader handling of empty files

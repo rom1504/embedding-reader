@@ -7,13 +7,13 @@ import numpy as np
 import pyarrow.parquet as pq
 from collections import namedtuple
 from embedding_reader.get_file_list import get_file_list
-from embedding_reader.piece_builder import build_pieces
+from embedding_reader.piece_builder import build_pieces, PIECES_BASE_COLUMNS
 from threading import Semaphore
 import math
 
 
 class ParquetReader:
-    """Parquet reader class, implements init to read the files headers and call to procuce embeddings batches"""
+    """Parquet reader class, implements init to read the files headers and call to produce embeddings batches"""
 
     def __init__(self, embeddings_folder, embedding_column_name, metadata_column_names=None):
         self.embeddings_folder = embeddings_folder
@@ -58,7 +58,7 @@ class ParquetReader:
 
     def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
         if end is None:
-            end = self.headers["count"].sum()
+            end = self.count
 
         if end > self.count:
             end = self.count
@@ -75,17 +75,7 @@ class ParquetReader:
         )
         batch_count = pieces["batch_id"].max() + 1
 
-        cols = [
-            "filename",
-            "piece_start",
-            "piece_end",
-            "piece_length",
-            "batch_id",
-            "batch_start",
-            "batch_end",
-            "batch_length",
-            "last_piece",
-        ]
+        cols = PIECES_BASE_COLUMNS
         Piece = namedtuple("Count", cols)
 
         def read_piece(piece):

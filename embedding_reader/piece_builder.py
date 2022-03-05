@@ -38,9 +38,12 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
     items = [filecount(*args) for args in zip(*[headers[col] for col in columns])]
 
     header_i = 0
-    while header_i < len(items) and items[header_i].count_before + items[header_i].count < start:
+    while header_i < len(items) and items[header_i].count_before + items[header_i].count <= start:
         header_i += 1
         continue
+
+    if header_i == len(items):
+        raise ValueError(f"Can not build pieces for batch with start: {start}, end: {end}, perhaps reduce the start")
 
     # we skipped start-count_before from the first file
     read_current_file = start - items[header_i].count_before

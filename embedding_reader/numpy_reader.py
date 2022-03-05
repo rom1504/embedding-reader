@@ -15,7 +15,7 @@ import re
 import math
 from collections import namedtuple
 from embedding_reader.get_file_list import get_file_list
-from embedding_reader.piece_builder import build_pieces
+from embedding_reader.piece_builder import build_pieces, PIECES_BASE_COLUMNS
 from threading import Semaphore
 
 
@@ -68,7 +68,7 @@ class NumpyReader:
 
     def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
         if end is None:
-            end = self.headers["count"].sum()
+            end = self.count
 
         if end > self.count:
             end = self.count
@@ -80,27 +80,16 @@ class NumpyReader:
         if parallel_pieces is None:
             parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
 
+        metadata_columns = ["header_offset"]
         pieces = build_pieces(
             headers=self.headers,
             batch_size=batch_size,
             start=start,
             end=end,
             max_piece_size=max_piece_size,
-            metadata_columns=["header_offset"],
+            metadata_columns=metadata_columns,
         )
-
-        cols = [
-            "filename",
-            "piece_start",
-            "piece_end",
-            "piece_length",
-            "batch_id",
-            "batch_start",
-            "batch_end",
-            "batch_length",
-            "last_piece",
-            "header_offset",
-        ]
+        cols = PIECES_BASE_COLUMNS + metadata_columns
         Piece = namedtuple("Count", cols)
 
         def read_piece(piece):

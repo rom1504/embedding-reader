@@ -4,10 +4,23 @@ import pandas as pd
 from collections import namedtuple
 
 
+PIECES_BASE_COLUMNS = [
+    "filename",
+    "piece_start",
+    "piece_end",
+    "piece_length",
+    "batch_id",
+    "batch_start",
+    "batch_end",
+    "batch_length",
+    "last_piece",
+]
+
+
 def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadata_columns=None):
     """
     Build pieces function takes as input a list of headers and
-    returns a list of pieces splitted in size maximum max_piece_size.
+    returns a list of pieces split in size maximum max_piece_size.
     Input: (filename, count, count_before)
     Output: (filename:str, piece_start:int, piece_end:int, batch_id:int, batch_length:int, last_piece:bool)
 
@@ -76,16 +89,5 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
 
     return pd.DataFrame(
         pieces,
-        columns=[
-            "filename",
-            "piece_start",
-            "piece_end",
-            "piece_length",
-            "batch_id",
-            "batch_start",
-            "batch_end",
-            "batch_length",
-            "last_piece",
-        ]
-        + metadata_columns,
+        columns=PIECES_BASE_COLUMNS + metadata_columns,
     )

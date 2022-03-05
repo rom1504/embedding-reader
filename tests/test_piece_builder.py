@@ -1,7 +1,5 @@
-from unittest import result
 from embedding_reader.piece_builder import build_pieces
 
-import numpy as np
 import random
 import pytest
 import pandas as pd

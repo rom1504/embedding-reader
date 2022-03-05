@@ -1,11 +1,11 @@
-"""Reader module exposes the reading functionaly of all formats"""
+"""Reader module exposes the reading functionality of all formats"""
 
 from embedding_reader.numpy_reader import NumpyReader
 from embedding_reader.parquet_reader import ParquetReader
 
 
 class EmbeddingReader:
-    """reader class, implements init to read the files headers and call to procuce embeddings batches"""
+    """reader class, implements init to read the files headers and call to produce embeddings batches"""
 
     def __init__(self, embeddings_folder, file_format="npy", embedding_column="embedding", meta_columns=None):
         if file_format == "npy":

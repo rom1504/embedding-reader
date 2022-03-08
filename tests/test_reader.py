@@ -24,7 +24,7 @@ def test_embedding_reader(file_format, collection_kind, tmpdir):
     )
     batch_size = random.randint(min_size, max_size)
     embedding_reader = EmbeddingReader(
-        tmp_dir, file_format=file_format, embedding_column="embedding", meta_columns=["id"]
+        tmp_dir, file_format=file_format, embedding_column="embedding", meta_columns=["id", "id2"]
     )
 
     assert embedding_reader.dimension == dim
@@ -45,5 +45,6 @@ def test_embedding_reader(file_format, collection_kind, tmpdir):
     np.testing.assert_almost_equal(actual_array, expected_array)
     if expected_meta is not None:
         pd.testing.assert_frame_equal(
-            actual_ids.reset_index(drop=True), expected_meta[["id", "i"]].reset_index(drop=True)
+            actual_ids.reset_index(drop=True), expected_meta[["id", "id2", "i"]].reset_index(drop=True)
         )
+

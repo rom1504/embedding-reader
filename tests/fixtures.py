@@ -59,7 +59,8 @@ def build_test_collection_parquet(
             ids = list(range(n, n + size))
         else:
             ids = np.random.randint(max_size * nb_files * 10, size=size)
-        df = pd.DataFrame({"embedding": list(arr), "id": ids})
+        id2 = np.random.randint(max_size * nb_files * 10, size=size)
+        df = pd.DataFrame({"embedding": list(arr), "id": ids, "id2": id2})
         all_dfs.append(df)
         filename = str(i).zfill(int(math.log10(len(str(nb_files)))) + 1)
         file_path = os.path.join(tmp_path, f"{filename}.parquet")
@@ -69,4 +70,5 @@ def build_test_collection_parquet(
     all_dfs = pd.concat(all_dfs)
     expected_array = np.vstack(all_dfs["embedding"])
     all_dfs["i"] = np.arange(start=0, stop=len(all_dfs))
-    return str(tmp_path), sizes, dim, expected_array, all_dfs[["id", "i"]], file_paths
+    return str(tmp_path), sizes, dim, expected_array, all_dfs[["id", "id2", "i"]], file_paths
+

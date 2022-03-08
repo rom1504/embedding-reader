@@ -123,16 +123,14 @@ class ParquetReader:
                 if batch is None:
                     batch = np.empty((piece.batch_length, self.dimension), "float32")
                     if self.metadata_column_names is not None:
-                        batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names) + 1), dtype="object")
+                        batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names)), dtype="object")
                 batch[batch_offset : (batch_offset + piece.piece_length)] = data
                 if self.metadata_column_names is not None:
                     batch_meta[batch_offset : (batch_offset + piece.piece_length)] = meta.to_numpy()
                 batch_offset += data.shape[0]
                 if piece.last_piece:
                     if self.metadata_column_names is not None:
-                        meta_batch_df = pd.DataFrame(
-                            batch_meta, columns=self.metadata_column_names + ["i"]
-                        ).infer_objects()
+                        meta_batch_df = pd.DataFrame(batch_meta, columns=self.metadata_column_names).infer_objects()
                         meta_batch_df["i"] = np.arange(start=piece.batch_start, stop=piece.batch_end)
                     else:
                         meta_batch_df = None

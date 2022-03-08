@@ -1,3 +1,7 @@
+## 1.1.6
+
+* fix progress report in parquet reader
+
 ## 1.1.5
 
 * Fix some edges cases and clean some codes

@@ -47,4 +47,3 @@ def test_embedding_reader(file_format, collection_kind, tmpdir):
         pd.testing.assert_frame_equal(
             actual_ids.reset_index(drop=True), expected_meta[["id", "id2", "i"]].reset_index(drop=True)
         )
-

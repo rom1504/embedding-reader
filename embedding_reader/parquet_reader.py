@@ -120,29 +120,33 @@ class ParquetReader:
                     raise Exception(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
                     ) from err
-                if batch is None:
-                    batch = np.empty((piece.batch_length, self.dimension), "float32")
+                try:
+                    if batch is None:
+                        batch = np.empty((piece.batch_length, self.dimension), "float32")
+                        if self.metadata_column_names is not None:
+                            batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names)), dtype="object")
+                    batch[batch_offset : (batch_offset + piece.piece_length)] = data
                     if self.metadata_column_names is not None:
-                        batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names)), dtype="object")
-                batch[batch_offset : (batch_offset + piece.piece_length)] = data
-                if self.metadata_column_names is not None:
-                    batch_meta[batch_offset : (batch_offset + piece.piece_length)] = meta.to_numpy()
-                batch_offset += data.shape[0]
-                if piece.last_piece:
-                    if self.metadata_column_names is not None:
-                        meta_batch_df = pd.DataFrame(batch_meta, columns=self.metadata_column_names).infer_objects()
-                        meta_batch_df["i"] = np.arange(start=piece.batch_start, stop=piece.batch_end)
-                    else:
-                        meta_batch_df = None
-                    yield batch, meta_batch_df
-                    batch = None
-                    if self.metadata_column_names is not None:
-                        batch_meta = None
-                    batch_offset = 0
+                        batch_meta[batch_offset : (batch_offset + piece.piece_length)] = meta.to_numpy()
+                    batch_offset += data.shape[0]
+                    if piece.last_piece:
+                        if self.metadata_column_names is not None:
+                            meta_batch_df = pd.DataFrame(batch_meta, columns=self.metadata_column_names).infer_objects()
+                            meta_batch_df["i"] = np.arange(start=piece.batch_start, stop=piece.batch_end)
+                        else:
+                            meta_batch_df = None
+                        yield batch, meta_batch_df
+                        batch = None
+                        if self.metadata_column_names is not None:
+                            batch_meta = None
+                        batch_offset = 0
 
-                if show_progress:
-                    pbar.update(1)
-                semaphore.release()
+                    if show_progress:
+                        pbar.update(1)
+                    semaphore.release()
+                except Exception as e:  # pylint: disable=broad-except
+                    semaphore.release()
+                    raise e
 
         if show_progress:
             pbar.close()

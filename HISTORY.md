@@ -1,3 +1,8 @@
+## 1.1.10
+
+* try catch whole block in reader to avoid getting stuck in case of error
+* Fix meta column assignment
+
 ## 1.1.9
 
 * don't use threads in read_table in parquet reader

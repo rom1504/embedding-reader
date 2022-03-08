@@ -71,4 +71,3 @@ def build_test_collection_parquet(
     expected_array = np.vstack(all_dfs["embedding"])
     all_dfs["i"] = np.arange(start=0, stop=len(all_dfs))
     return str(tmp_path), sizes, dim, expected_array, all_dfs[["id", "id2", "i"]], file_paths
-

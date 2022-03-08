@@ -138,20 +138,23 @@ class NumpyReader:
                     raise Exception(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
                     ) from err
+                try:
+                    if batch is None:
+                        batch = np.empty((piece.batch_length, self.dimension), "float32")
 
-                if batch is None:
-                    batch = np.empty((piece.batch_length, self.dimension), "float32")
+                    batch[batch_offset : (batch_offset + piece.piece_length)] = data
+                    batch_offset += data.shape[0]
+                    if piece.last_piece:
+                        yield batch, None
+                        batch = None
+                        batch_offset = 0
 
-                batch[batch_offset : (batch_offset + piece.piece_length)] = data
-                batch_offset += data.shape[0]
-                if piece.last_piece:
-                    yield batch, None
-                    batch = None
-                    batch_offset = 0
-
-                if show_progress:
-                    pbar.update(1)
-                semaphore.release()
+                    if show_progress:
+                        pbar.update(1)
+                    semaphore.release()
+                except Exception as e:  # pylint: disable=broad-except
+                    semaphore.release()
+                    raise e
 
         if show_progress:
             pbar.close()

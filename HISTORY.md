@@ -1,3 +1,7 @@
+## 1.1.7
+
+* propagating exceptions from thread pools
+
 ## 1.1.6
 
 * fix progress report in parquet reader

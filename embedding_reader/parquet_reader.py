@@ -35,14 +35,19 @@ class ParquetReader:
                     continue
 
         def file_to_header(filename):
-            with self.fs.open(filename, "rb") as f:
-                parquet_file = pq.ParquetFile(f, memory_map=True)
-                return [filename, parquet_file.metadata.num_rows]
+            try:
+                with self.fs.open(filename, "rb") as f:
+                    parquet_file = pq.ParquetFile(f, memory_map=True)
+                    return (None, [filename, parquet_file.metadata.num_rows])
+            except Exception as e:  # pylint: disable=broad-except
+                return e, (filename, None)
 
         headers = []
         count_before = 0
         with ThreadPool(10) as p:
-            for c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+            for err, c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+                if err is not None:
+                    raise Exception(f"failed reading file {c[0]}") from err
                 if c[1] == 0:
                     continue
                 headers.append([*c, count_before])
@@ -78,23 +83,22 @@ class ParquetReader:
         Piece = namedtuple("Count", cols)
 
         def read_piece(piece):
-            start = piece.piece_start
-            end = piece.piece_end
-            path = piece.filename
+            try:
+                start = piece.piece_start
+                end = piece.piece_end
+                path = piece.filename
 
-            with self.fs.open(path, "rb") as f:
-                length = end - start
-                table = pq.read_table(f)
-                id_columns = self.metadata_column_names
-                table_slice = table.slice(start, length)
-                embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
-                ids = table_slice.select(id_columns).to_pandas() if id_columns else None
+                with self.fs.open(path, "rb") as f:
+                    length = end - start
+                    table = pq.read_table(f)
+                    id_columns = self.metadata_column_names
+                    table_slice = table.slice(start, length)
+                    embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
+                    ids = table_slice.select(id_columns).to_pandas() if id_columns else None
 
-                return (
-                    np.stack(embeddings_raw),
-                    ids,
-                    piece,
-                )
+                    return (None, (np.stack(embeddings_raw), ids, piece,))
+            except Exception as e:  # pylint: disable=broad-except
+                return e, (None, None, piece)
 
         semaphore = Semaphore(parallel_pieces)
 
@@ -110,7 +114,12 @@ class ParquetReader:
         if show_progress:
             pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
-            for data, meta, piece in p.imap(read_piece, piece_generator(pieces)):
+            for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces)):
+                if err is not None:
+                    semaphore.release()
+                    raise Exception(
+                        f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
+                    ) from err
                 if batch is None:
                     batch = np.empty((piece.batch_length, self.dimension), "float32")
                     if self.metadata_column_names is not None:

@@ -41,13 +41,18 @@ class NumpyReader:
         self.fs, embeddings_file_paths = get_file_list(embeddings_folder, "npy")
 
         def file_to_header(filename):
-            with self.fs.open(filename, "rb") as f:
-                return [filename, *read_numpy_header(f)]
+            try:
+                with self.fs.open(filename, "rb") as f:
+                    return (None, [filename, *read_numpy_header(f)])
+            except Exception as e:  # pylint: disable=broad-except
+                return e, (filename, None)
 
         headers = []
         count_before = 0
         with ThreadPool(10) as p:
-            for c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+            for err, c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
+                if err is not None:
+                    raise Exception(f"failed reading file {c[0]}") from err
                 if c[1] == 0:
                     continue
                 headers.append([*c[0:2], count_before, *c[2:]])
@@ -93,20 +98,26 @@ class NumpyReader:
         Piece = namedtuple("Count", cols)
 
         def read_piece(piece):
-            start = piece.piece_start
-            end = piece.piece_end
-            path = piece.filename
-            header_offset = piece.header_offset
+            try:
+                start = piece.piece_start
+                end = piece.piece_end
+                path = piece.filename
+                header_offset = piece.header_offset
 
-            with self.fs.open(path, "rb") as f:
-                length = end - start
-                f.seek(header_offset + start * self.byte_per_item)
-                return (
-                    np.frombuffer(f.read(length * self.byte_per_item), dtype=self.dtype).reshape(
-                        (length, self.dimension)
-                    ),
-                    piece,
-                )
+                with self.fs.open(path, "rb") as f:
+                    length = end - start
+                    f.seek(header_offset + start * self.byte_per_item)
+                    return (
+                        None,
+                        (
+                            np.frombuffer(f.read(length * self.byte_per_item), dtype=self.dtype).reshape(
+                                (length, self.dimension)
+                            ),
+                            piece,
+                        ),
+                    )
+            except Exception as e:  # pylint: disable=broad-except
+                return e, (None, piece)
 
         semaphore = Semaphore(parallel_pieces)
 
@@ -121,7 +132,13 @@ class NumpyReader:
         if show_progress:
             pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
-            for data, piece in p.imap(read_piece, piece_generator(pieces)):
+            for err, (data, piece) in p.imap(read_piece, piece_generator(pieces)):
+                if err is not None:
+                    semaphore.release()
+                    raise Exception(
+                        f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
+                    ) from err
+
                 if batch is None:
                     batch = np.empty((piece.batch_length, self.dimension), "float32")
 

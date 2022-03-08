@@ -1,3 +1,7 @@
+## 1.1.9
+
+* don't use threads in read_table in parquet reader
+
 ## 1.1.8
 
 * specify dependencies minimal versions

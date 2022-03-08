@@ -73,7 +73,6 @@ class ParquetReader:
         pieces = build_pieces(
             headers=self.headers, batch_size=batch_size, start=start, end=end, max_piece_size=max_piece_size
         )
-        batch_count = pieces["batch_id"].max() + 1
 
         cols = PIECES_BASE_COLUMNS
         Piece = namedtuple("Count", cols)
@@ -109,7 +108,7 @@ class ParquetReader:
         batch_offset = 0
 
         if show_progress:
-            pbar = tqdm(total=batch_count)
+            pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
             for data, meta, piece in p.imap(read_piece, piece_generator(pieces)):
                 if batch is None:
@@ -133,8 +132,9 @@ class ParquetReader:
                     if self.metadata_column_names is not None:
                         batch_meta = None
                     batch_offset = 0
-                    if show_progress:
-                        pbar.update(1)
+
+                if show_progress:
+                    pbar.update(1)
                 semaphore.release()
 
         if show_progress:

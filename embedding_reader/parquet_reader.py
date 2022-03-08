@@ -90,7 +90,7 @@ class ParquetReader:
 
                 with self.fs.open(path, "rb") as f:
                     length = end - start
-                    table = pq.read_table(f)
+                    table = pq.read_table(f, use_threads=False)
                     id_columns = self.metadata_column_names
                     table_slice = table.slice(start, length)
                     embeddings_raw = table_slice[self.embedding_column_name].to_numpy()

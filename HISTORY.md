@@ -1,3 +1,7 @@
+## 1.1.8
+
+* specify dependencies minimal versions
+
 ## 1.1.7
 
 * propagating exceptions from thread pools

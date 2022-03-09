@@ -134,7 +134,9 @@ class ParquetReader:
                             meta_batch_df = pd.DataFrame(batch_meta, columns=self.metadata_column_names).infer_objects()
                             meta_batch_df["i"] = np.arange(start=piece.batch_start, stop=piece.batch_end)
                         else:
-                            meta_batch_df = None
+                            meta_batch_df = pd.DataFrame(
+                                np.arange(start=piece.batch_start, stop=piece.batch_end), columns=["i"]
+                            )
                         yield batch, meta_batch_df
                         batch = None
                         if self.metadata_column_names is not None:

@@ -31,7 +31,8 @@ def build_test_collection_numpy(
         file_paths.append(file_path)
         np.save(file_path, arr)
     all_arrays = np.vstack(all_arrays)
-    return str(tmp_path), sizes, dim, all_arrays, None, file_paths
+    meta_batch_df = pd.DataFrame(np.arange(start=0, stop=all_arrays.shape[0]), columns=["i"])
+    return str(tmp_path), sizes, dim, all_arrays, meta_batch_df, file_paths
 
 
 def build_test_collection_parquet(

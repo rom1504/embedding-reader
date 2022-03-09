@@ -43,7 +43,9 @@ def test_embedding_reader(file_format, collection_kind, tmpdir):
     assert all_shapes[-1][0] <= batch_size and all_shapes[-1][1] == 512
     assert actual_array.shape == expected_array.shape
     np.testing.assert_almost_equal(actual_array, expected_array)
-    if expected_meta is not None:
+    if file_format == "parquet":
         pd.testing.assert_frame_equal(
             actual_ids.reset_index(drop=True), expected_meta[["id", "id2", "i"]].reset_index(drop=True)
         )
+    else:
+        pd.testing.assert_frame_equal(actual_ids.reset_index(drop=True), expected_meta[["i"]].reset_index(drop=True))

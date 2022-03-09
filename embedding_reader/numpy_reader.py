@@ -145,7 +145,10 @@ class NumpyReader:
                     batch[batch_offset : (batch_offset + piece.piece_length)] = data
                     batch_offset += data.shape[0]
                     if piece.last_piece:
-                        yield batch, None
+                        meta_batch_df = pd.DataFrame(
+                            np.arange(start=piece.batch_start, stop=piece.batch_end), columns=["i"]
+                        )
+                        yield batch, meta_batch_df
                         batch = None
                         batch_offset = 0
 

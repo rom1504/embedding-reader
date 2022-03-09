@@ -17,7 +17,7 @@ if __name__ == "__main__":
         name="embedding_reader",
         packages=find_packages(),
         include_package_data=True,
-        version="1.2.0",
+        version="1.2.1",
         license="MIT",
         description="A python template",
         long_description=long_description,

@@ -1,3 +1,7 @@
+## 1.2.1
+
+* [Fix] get_file_list function fix
+
 ## 1.2.0
 
 * provide consecutive ids in all cases

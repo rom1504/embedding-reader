@@ -1,3 +1,7 @@
+## 1.2.0
+
+* provide consecutive ids in all cases
+
 ## 1.1.10
 
 * try catch whole block in reader to avoid getting stuck in case of error

@@ -1,3 +1,7 @@
+## 1.2.2
+
+* fix parallel_pieces default
+
 ## 1.2.1
 
 * [Fix] get_file_list function fix

@@ -2,20 +2,30 @@
 
 from embedding_reader.numpy_reader import NumpyReader
 from embedding_reader.parquet_reader import ParquetReader
+from embedding_reader.parquet_numpy_reader import ParquetNumpyReader
 
 
 class EmbeddingReader:
     """reader class, implements init to read the files headers and call to produce embeddings batches"""
 
-    def __init__(self, embeddings_folder, file_format="npy", embedding_column="embedding", meta_columns=None):
+    def __init__(
+        self,
+        embeddings_folder,
+        file_format="npy",
+        embedding_column="embedding",
+        meta_columns=None,
+        metadata_folder=None,
+    ):
         if file_format == "npy":
             self.reader = NumpyReader(embeddings_folder)
         elif file_format == "parquet":
             self.reader = ParquetReader(
                 embeddings_folder, embedding_column_name=embedding_column, metadata_column_names=meta_columns
             )
+        elif file_format == "parquet_npy":
+            self.reader = ParquetNumpyReader(embeddings_folder, metadata_folder, meta_columns)
         else:
-            raise ValueError("format must be npy or parquet")
+            raise ValueError("format must be npy, parquet or parquet_npy")
 
         self.dimension = self.reader.dimension
         self.count = self.reader.count

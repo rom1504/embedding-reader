@@ -1,3 +1,7 @@
+## 1.3.0
+
+* parquet numpy reader
+
 ## 1.2.2
 
 * fix parallel_pieces default

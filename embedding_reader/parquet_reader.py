@@ -101,9 +101,12 @@ class ParquetReader:
                 return e, (None, None, piece)
 
         semaphore = Semaphore(parallel_pieces)
+        stopped = False
 
         def piece_generator(pieces):
             for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
+                if stopped:
+                    break
                 semaphore.acquire()
                 yield piece
 
@@ -116,6 +119,7 @@ class ParquetReader:
         with ThreadPool(parallel_pieces) as p:
             for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces)):
                 if err is not None:
+                    stopped = True
                     semaphore.release()
                     raise Exception(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
@@ -147,6 +151,7 @@ class ParquetReader:
                         pbar.update(1)
                     semaphore.release()
                 except Exception as e:  # pylint: disable=broad-except
+                    stopped = True
                     semaphore.release()
                     raise e
 

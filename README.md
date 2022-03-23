@@ -54,14 +54,15 @@ See fsspec doc for all the details.
 
 This module exposes one class:
 
-### EmbeddingReader(folder, file_format, embedding_column="embedding", meta_columns=None)
+### EmbeddingReader(folder, file_format, embedding_column="embedding", meta_columns=None, metadata_folder=None)
 
 initialize the reader by listing all files and retrieving their metadata
 
 * **folder** embeddings folder. Can also be a list of folders. (*required*)
-* **file_format** parquet or npy. (*required*)
-* **embedding_column** embedding column in parquet. (*required*)
-* **meta_columns** meta columns in parquet. (*required*)
+* **file_format** parquet, npy or parquet_npy. (*required*)
+* **embedding_column** embedding column in parquet. (*default embedding*)
+* **meta_columns** meta columns in parquet. (*default None*)
+* **metadata_folder** metadata folder, used by the parquet_npy reader (*default None*)
 
 #### .embeddings_folder
 

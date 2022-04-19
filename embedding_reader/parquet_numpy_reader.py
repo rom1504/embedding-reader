@@ -2,6 +2,7 @@
 Assumptions: the numpy and parquet files should be completely aligned
 """
 
+from functools import lru_cache
 import pandas as pd
 from multiprocessing.pool import ThreadPool
 from tqdm import tqdm
@@ -14,6 +15,26 @@ from embedding_reader.piece_builder import build_pieces, PIECES_BASE_COLUMNS
 from threading import Semaphore
 import pyarrow.parquet as pq
 
+r = Semaphore(1)
+
+d = {}
+def open_parquet_file(fs, filename):
+    global d
+    r.acquire()
+    if filename in d:
+        r.release()
+        return d[filename]["t"]
+    # new file, new dict
+    if len(d) > 0:
+        for v in d.values():
+            v["f"].close()
+        d = {}
+    print(filename)
+    f = fs.open(filename, "rb")
+    t = pq.read_table(f, use_threads=False)
+    d[filename] = {"f": f, "t": t}
+    r.release()
+    return t
 
 class ParquetNumpyReader:
     """Parquet numpy reader class, implements init to read the files headers and call to procuce embeddings batches"""
@@ -102,12 +123,12 @@ class ParquetNumpyReader:
                 metadata_path = piece.metadata_path
                 header_offset = piece.header_offset
 
-                with self.metadata_fs.open(metadata_path, "rb") as f:
-                    length = end - start
-                    table = pq.read_table(f, use_threads=False)
-                    id_columns = self.metadata_column_names
-                    table_slice = table.slice(start, length)
-                    ids = table_slice.select(id_columns).to_pandas()
+                
+                length = end - start
+                id_columns = self.metadata_column_names
+                table = open_parquet_file(self.metadata_fs, metadata_path)
+                table_slice = table.slice(start, length)
+                ids = table_slice.select(id_columns).to_pandas()
 
                 with self.fs.open(path, "rb") as f:
                     length = end - start

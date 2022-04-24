@@ -20,13 +20,21 @@ Checkout these examples to call this as a lib:
 ```python
 from embedding_reader import EmbeddingReader
 
-embedding_reader = EmbeddingReader(embeddings_folder="embedding_folder", file_format="npy")
+my_embeddings = "/path/to/embedding_folder"
 
+# To query hosted laion5b embeddings, just point the EmbeddingReader to this URL!
+# laion_index_url = "https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/"
+# my_embeddings = laion_index_url 
+
+embedding_reader = EmbeddingReader(embeddings_folder=my_embeddings, file_format="npy")
+
+# using laion_index_url, it takes just a few minutes to build the EmbeddingReader and populate dataset metadata
 print("embedding count", embedding_reader.count)
 print("dimension", embedding_reader.dimension)
 print("total size", embedding_reader.total_size)
 print("byte per item", embedding_reader.byte_per_item)
 
+# Batching over hosted laion5b embeddings 1M at a time is as simple as...
 for emb, meta in embedding_reader(batch_size=10 ** 6, start=0, end=embedding_reader.count):
     print(emb.shape)
 ```

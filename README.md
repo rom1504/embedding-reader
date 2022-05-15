@@ -52,6 +52,27 @@ for emb, meta in embedding_reader(batch_size=10 ** 6, start=0, end=embedding_rea
 ```
 It takes about 3h to read laion2B-en embeddings at 300MB/s
 
+### Numpy & Parquet Metadata Example
+
+The parquet_npy format supports reading from both a .npy collection and a .parquet collection that are in the same order.
+Here is an example of usage:
+
+```python
+from embedding_reader import EmbeddingReader
+
+embedding_reader = EmbeddingReader(
+    embeddings_folder="embedding_folder",
+    metadata_folder="metadata_folder",
+    meta_columns=['image_path', 'caption'],
+    file_format="parquet_npy"
+)
+
+for emb, meta in embedding_reader(batch_size=10 ** 6, start=0, end=embedding_reader.count):
+    print(emb.shape)
+    print(meta["image_path"], meta["caption"])
+```
+`emb` is a numpy array like the previous examples while `meta` is a pandas dataframe with the columns requested in `meta_columns`.
+
 ## Who is using embedding reader?
 
 Some use cases of embedding reader include:

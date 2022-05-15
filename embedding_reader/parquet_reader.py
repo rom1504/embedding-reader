@@ -56,7 +56,7 @@ class ParquetReader:
         self.headers = pd.DataFrame(headers, columns=["filename", "count", "count_before"])
         self.count = self.headers["count"].sum()
         if self.count == 0:
-            raise ValueError("No embeddings found in folder {}".format(embeddings_folder))
+            raise ValueError(f"No embeddings found in folder {embeddings_folder}")
         self.byte_per_item = 4 * self.dimension
 
         self.total_size = self.count * self.byte_per_item
@@ -71,7 +71,7 @@ class ParquetReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            max_piece_size = max(int(50 * 10 ** 6 / (self.byte_per_item)), 1)
+            max_piece_size = max(int(50 * 10**6 / (self.byte_per_item)), 1)
         if parallel_pieces is None:
             parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
 
@@ -96,7 +96,14 @@ class ParquetReader:
                     embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
                     ids = table_slice.select(id_columns).to_pandas() if id_columns else None
 
-                    return (None, (np.stack(embeddings_raw), ids, piece,))
+                    return (
+                        None,
+                        (
+                            np.stack(embeddings_raw),
+                            ids,
+                            piece,
+                        ),
+                    )
             except Exception as e:  # pylint: disable=broad-except
                 return e, (None, None, piece)
 
@@ -107,7 +114,7 @@ class ParquetReader:
             for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
                 if stopped:
                     break
-                semaphore.acquire()
+                semaphore.acquire()  # pylint: disable=consider-using-with
                 yield piece
 
         batch = None

@@ -62,7 +62,7 @@ class ParquetNumpyReader:
 
         self.count = self.headers["count"].sum()
         if self.count == 0:
-            raise ValueError("No embeddings found in folder {}".format(embeddings_folder))
+            raise ValueError("No embeddings found in folder {embeddings_folder}")
         self.dimension = int(self.headers.iloc[0]["dimension"])
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
@@ -78,7 +78,7 @@ class ParquetNumpyReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            max_piece_size = max(int(50 * 10 ** 6 / (self.byte_per_item)), 1)
+            max_piece_size = max(int(50 * 10**6 / (self.byte_per_item)), 1)
         if parallel_pieces is None:
             parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
 
@@ -134,7 +134,7 @@ class ParquetNumpyReader:
             for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
                 if stopped:
                     break
-                semaphore.acquire()
+                semaphore.acquire()  # pylint: disable=consider-using-with
                 if piece.metadata_path not in open_parquet_files:
                     file = self.metadata_fs.open(piece.metadata_path, "rb")
                     table = pq.read_table(file, use_threads=True)

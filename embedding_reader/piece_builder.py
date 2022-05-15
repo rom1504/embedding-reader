@@ -90,4 +90,7 @@ def build_pieces(headers, batch_size, start, end, max_piece_size=100000, metadat
 
         read_current_batch = 0
 
-    return pd.DataFrame(pieces, columns=PIECES_BASE_COLUMNS + metadata_columns,)
+    return pd.DataFrame(
+        pieces,
+        columns=PIECES_BASE_COLUMNS + metadata_columns,
+    )

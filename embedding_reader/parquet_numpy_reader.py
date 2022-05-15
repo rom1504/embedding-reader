@@ -2,7 +2,6 @@
 Assumptions: the numpy and parquet files should be completely aligned
 """
 
-from functools import lru_cache
 import pandas as pd
 from multiprocessing.pool import ThreadPool
 from tqdm import tqdm
@@ -15,26 +14,6 @@ from embedding_reader.piece_builder import build_pieces, PIECES_BASE_COLUMNS
 from threading import Semaphore
 import pyarrow.parquet as pq
 
-r = Semaphore(1)
-
-d = {}
-def open_parquet_file(fs, filename):
-    global d
-    r.acquire()
-    if filename in d:
-        r.release()
-        return d[filename]["t"]
-    # new file, new dict
-    if len(d) > 0:
-        for v in d.values():
-            v["f"].close()
-        d = {}
-    print(filename)
-    f = fs.open(filename, "rb")
-    t = pq.read_table(f, use_threads=False)
-    d[filename] = {"f": f, "t": t}
-    r.release()
-    return t
 
 class ParquetNumpyReader:
     """Parquet numpy reader class, implements init to read the files headers and call to procuce embeddings batches"""
@@ -115,7 +94,8 @@ class ParquetNumpyReader:
         cols = PIECES_BASE_COLUMNS + metadata_columns
         Piece = namedtuple("Count", cols)
 
-        def read_piece(piece):
+        def read_piece(t):
+            (piece, table) = t
             try:
                 start = piece.piece_start
                 end = piece.piece_end
@@ -123,10 +103,8 @@ class ParquetNumpyReader:
                 metadata_path = piece.metadata_path
                 header_offset = piece.header_offset
 
-                
                 length = end - start
                 id_columns = self.metadata_column_names
-                table = open_parquet_file(self.metadata_fs, metadata_path)
                 table_slice = table.slice(start, length)
                 ids = table_slice.select(id_columns).to_pandas()
 
@@ -149,13 +127,22 @@ class ParquetNumpyReader:
         semaphore = Semaphore(parallel_pieces)
 
         stopped = False
+        # from path to table and file
+        open_parquet_files = {}
 
-        def piece_generator(pieces):
+        def piece_generator(pieces, open_parquet_files):
+            current_parquet_file = None
             for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
                 if stopped:
                     break
                 semaphore.acquire()
-                yield piece
+                if piece.metadata_path not in open_parquet_files:
+                    file = self.metadata_fs.open(piece.metadata_path, "rb")
+                    table = pq.read_table(file, use_threads=True)
+                    open_parquet_files[piece.metadata_path] = {"file": file, "table": table}
+                if current_parquet_file != piece.metadata_path:
+                    current_parquet_file = piece.metadata_path
+                yield (piece, open_parquet_files[piece.metadata_path]["table"])
 
         batch = None
         batch_meta = None
@@ -164,7 +151,7 @@ class ParquetNumpyReader:
         if show_progress:
             pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
-            for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces)):
+            for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces, open_parquet_files)):
                 if err is not None:
                     stopped = True
                     semaphore.release()
@@ -187,6 +174,8 @@ class ParquetNumpyReader:
                         batch = None
                         batch_meta = None
                         batch_offset = 0
+                        open_parquet_files[piece.metadata_path]["file"].close()
+                        del open_parquet_files[piece.metadata_path]
 
                     if show_progress:
                         pbar.update(1)

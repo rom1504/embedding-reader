@@ -1,3 +1,7 @@
+## 1.4.0
+
+* faster numpy parquet
+
 ## 1.3.0
 
 * parquet numpy reader

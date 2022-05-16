@@ -137,7 +137,14 @@ class ParquetNumpyReader:
                 semaphore.acquire()  # pylint: disable=consider-using-with
                 if piece.metadata_path not in open_parquet_files:
                     file = self.metadata_fs.open(piece.metadata_path, "rb")
-                    table = pq.read_table(file, use_threads=True)
+                    for _ in range(5):
+                        try:
+                            table = pq.read_table(file, use_threads=True)
+                            break
+                        except Exception as e:  # pylint: disable=broad-except
+                            print("Fail to read " + piece.metadata_path)
+                            print(e)
+
                     open_parquet_files[piece.metadata_path] = {"file": file, "table": table}
                 if current_parquet_file != piece.metadata_path:
                     current_parquet_file = piece.metadata_path

@@ -1,6 +1,6 @@
 """
 This is an example on how to use embedding reader to do an inference over a set of billion
-of clip vit-l/14 embeddings to predict whether the corresponding images are a diagram, a dog or a cat
+of clip vit-l/14 embeddings to predict whether the coco classes for the images
 """
 
 
@@ -13,7 +13,15 @@ import numpy as np
 import fsspec
 import math
 import pandas as pd
-import gc
+import functools
+
+
+@functools.lru_cache(maxsize=None)
+def get_coco_classes():
+    fs, p = fsspec.core.url_to_fs("https://github.com/pjreddie/darknet/raw/master/data/coco.names")
+    with fs.open(p, "r") as f:
+        cls = f.read().split("\n")[:-1]
+    return cls
 
 
 def get_prompt_embeddings():
@@ -22,15 +30,16 @@ def get_prompt_embeddings():
     import clip
 
     device = "cpu"
-    model, preprocess = clip.load("ViT-L/14", device=device)
+    model, _ = clip.load("ViT-L/14", device=device)
 
-    text = clip.tokenize(["a diagram", "a dog", "a cat"]).to(device)
+    CLASSES = get_coco_classes()
+    text = clip.tokenize(["a " + c for c in CLASSES]).to(device)
 
     with torch.no_grad():
         text_features = model.encode_text(text)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-    return text_features.cpu().numpy()
+    return np.transpose(text_features.cpu().numpy())
 
 
 import mmh3
@@ -48,9 +57,9 @@ def compute_hash(url, text):
 
 
 def main(
-    embedding_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion1B-nolang/img_emb/",
-    metadata_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion1B-nolang/laion1B-nolang-metadata/",
-    output_folder="/media/hd2/diagram_dog_cat",
+    embedding_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/",
+    metadata_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/laion2B-en-metadata/",
+    output_folder="/media/hd2/diagram_dog_cat_2B_en_v2",
     batch_size=10**6,
     end=None,
 ):
@@ -66,13 +75,14 @@ def main(
     total = reader.count
     batch_count = math.ceil(total // batch_size)
     padding = int(math.log10(batch_count)) + 1
-    import tensorflow as tf  # pylint: disable=import-outside-toplevel
+    CLASSES = [c.replace(" ", "_") for c in get_coco_classes()]
 
     for i, (embeddings, ids) in enumerate(reader(batch_size=batch_size, start=0, end=end)):
-        predictions = np.einsum("ij,kj->ik", embeddings, prompts)
+        predictions = np.dot(embeddings, prompts)
         padded_id = str(i).zfill(padding)
         output_file_path = os.path.join(relative_output_path, padded_id + ".parquet")
-        df = pd.DataFrame({"prediction": predictions.tolist()})
+        d = {c: predictions[:, i].tolist() for i, c in enumerate(CLASSES)}
+        df = pd.DataFrame(d)
         df["hash"] = [compute_hash(x, y) for x, y in zip(ids["url"], ids["caption"])]
         df["url"] = ids["url"]
         with fs.open(output_file_path, "wb") as f:

@@ -1,3 +1,7 @@
+## 1.4.1
+
+* add retry in parquet numpy
+
 ## 1.4.0
 
 * faster numpy parquet

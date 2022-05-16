@@ -65,7 +65,7 @@ def main(
     embedding_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion1B-nolang/img_emb/",
     metadata_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion1B-nolang/laion1B-nolang-metadata/",
     output_folder="output",
-    batch_size=10**6,
+    batch_size=10**5,
     end=None,
 ):
     """main function"""
@@ -83,8 +83,7 @@ def main(
     import tensorflow as tf  # pylint: disable=import-outside-toplevel
 
     for i, (embeddings, ids) in enumerate(reader(batch_size=batch_size, start=0, end=end)):
-        tensor = tf.convert_to_tensor(embeddings, dtype=tf.float32)
-        predictions = model.predict(tensor, batch_size=embeddings.shape[0])
+        predictions = model.predict_on_batch(embeddings)
         batch = np.hstack(predictions)
         padded_id = str(i).zfill(padding)
         output_file_path = os.path.join(relative_output_path, padded_id + ".parquet")
@@ -93,7 +92,6 @@ def main(
         df["url"] = ids["url"]
         with fs.open(output_file_path, "wb") as f:
             df.to_parquet(f)
-        _ = gc.collect()
 
 
 if __name__ == "__main__":

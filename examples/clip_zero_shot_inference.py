@@ -14,6 +14,9 @@ import fsspec
 import math
 import pandas as pd
 import functools
+import pyarrow.parquet as pq
+import torch
+import clip
 
 
 @functools.lru_cache(maxsize=None)
@@ -26,8 +29,6 @@ def get_coco_classes():
 
 def get_prompt_embeddings():
     """load the safety model"""
-    import torch
-    import clip
 
     device = "cpu"
     model, _ = clip.load("ViT-L/14", device=device)
@@ -59,7 +60,7 @@ def compute_hash(url, text):
 def main(
     embedding_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/",
     metadata_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/laion2B-en-metadata/",
-    output_folder="/media/hd2/diagram_dog_cat_2B_en_v2",
+    output_folder="/media/hd2/coco",
     batch_size=10**6,
     end=None,
 ):

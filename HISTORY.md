@@ -1,3 +1,7 @@
+## 1.4.2
+
+* Create get headers function in numpy and parquet readers 
+
 ## 1.4.1
 
 * add retry in parquet numpy

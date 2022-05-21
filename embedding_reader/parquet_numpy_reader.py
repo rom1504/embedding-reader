@@ -9,7 +9,7 @@ import numpy as np
 import math
 from collections import namedtuple
 from embedding_reader.get_file_list import get_file_list
-from embedding_reader.numpy_reader import read_numpy_header
+from embedding_reader.numpy_reader import get_numpy_headers
 from embedding_reader.piece_builder import build_pieces, PIECES_BASE_COLUMNS
 from threading import Semaphore
 import pyarrow.parquet as pq
@@ -25,23 +25,7 @@ class ParquetNumpyReader:
         self.metadata_fs, metadata_file_paths = get_file_list(metadata_folder, "parquet")
         self.metadata_column_names = metadata_column_names
 
-        def file_to_header(filename):
-            try:
-                with self.fs.open(filename, "rb") as f:
-                    return (None, [filename, *read_numpy_header(f)])
-            except Exception as e:  # pylint: disable=broad-except
-                return e, (filename, None)
-
-        headers = []
-        count_before = 0
-        with ThreadPool(10) as p:
-            for err, c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
-                if err is not None:
-                    raise Exception(f"failed reading file {c[0]}") from err
-                if c[1] == 0:
-                    continue
-                headers.append([*c[0:2], count_before, *c[2:]])
-                count_before += c[1]
+        headers = get_numpy_headers(embeddings_file_paths, self.fs)
 
         # add metadata path to headers by zipping
         headers = [[*h, m] for h, m in zip(headers, metadata_file_paths)]
@@ -137,13 +121,17 @@ class ParquetNumpyReader:
                 semaphore.acquire()  # pylint: disable=consider-using-with
                 if piece.metadata_path not in open_parquet_files:
                     file = self.metadata_fs.open(piece.metadata_path, "rb")
-                    for _ in range(5):
+                    for i in range(5):
                         try:
                             table = pq.read_table(file, use_threads=True)
                             break
                         except Exception as e:  # pylint: disable=broad-except
                             print("Fail to read " + piece.metadata_path)
                             print(e)
+                            if i != 4:
+                                print(f"Retry number {i+1}/5...")
+                            else:
+                                raise e
 
                     open_parquet_files[piece.metadata_path] = {"file": file, "table": table}
                 if current_parquet_file != piece.metadata_path:

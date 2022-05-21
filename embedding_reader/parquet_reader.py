@@ -12,6 +12,33 @@ from threading import Semaphore
 import math
 
 
+def file_to_header(filename, fs):
+    try:
+        with fs.open(filename, "rb") as f:
+            parquet_file = pq.ParquetFile(f, memory_map=True)
+            return (None, [filename, parquet_file.metadata.num_rows])
+    except Exception as e:  # pylint: disable=broad-except
+        return e, (filename, None)
+
+
+def get_parquet_headers(fs, embeddings_file_paths):
+    """get parquet headers"""
+    headers = []
+    count_before = 0
+    with ThreadPool(10) as p:
+        for err, c in tqdm(
+            p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=len(embeddings_file_paths)
+        ):
+            if err is not None:
+                raise Exception(f"failed reading file {c[0]}") from err
+            if c[1] == 0:
+                continue
+            headers.append([*c, count_before])
+            count_before += c[1]
+
+    return headers
+
+
 class ParquetReader:
     """Parquet reader class, implements init to read the files headers and call to produce embeddings batches"""
 
@@ -34,25 +61,7 @@ class ParquetReader:
                 except StopIteration:
                     continue
 
-        def file_to_header(filename):
-            try:
-                with self.fs.open(filename, "rb") as f:
-                    parquet_file = pq.ParquetFile(f, memory_map=True)
-                    return (None, [filename, parquet_file.metadata.num_rows])
-            except Exception as e:  # pylint: disable=broad-except
-                return e, (filename, None)
-
-        headers = []
-        count_before = 0
-        with ThreadPool(10) as p:
-            for err, c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
-                if err is not None:
-                    raise Exception(f"failed reading file {c[0]}") from err
-                if c[1] == 0:
-                    continue
-                headers.append([*c, count_before])
-                count_before += c[1]
-
+        headers = get_parquet_headers(self.fs, embeddings_file_paths)
         self.headers = pd.DataFrame(headers, columns=["filename", "count", "count_before"])
         self.count = self.headers["count"].sum()
         if self.count == 0:

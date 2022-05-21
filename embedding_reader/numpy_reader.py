@@ -33,6 +33,32 @@ def read_numpy_header(f):
     return (shape[0], shape[1], dtype, end, byte_per_item)
 
 
+def file_to_header(filename, fs):
+    try:
+        with fs.open(filename, "rb") as f:
+            return (None, [filename, *read_numpy_header(f)])
+    except Exception as e:  # pylint: disable=broad-except
+        return e, (filename, None)
+
+
+def get_numpy_headers(embeddings_file_paths, fs):
+    """get numpy headers"""
+    headers = []
+    count_before = 0
+    with ThreadPool(128) as p:
+        for err, c in tqdm(
+            p.imap(lambda f: file_to_header(f, fs), embeddings_file_paths), total=len(embeddings_file_paths)
+        ):
+            if err is not None:
+                raise Exception(f"failed reading file {c[0]}") from err
+            if c[1] == 0:
+                continue
+            headers.append([*c[0:2], count_before, *c[2:]])
+            count_before += c[1]
+
+    return headers
+
+
 class NumpyReader:
     """Numpy reader class, implements init to read the files headers and call to procuce embeddings batches"""
 
@@ -40,24 +66,7 @@ class NumpyReader:
         self.embeddings_folder = embeddings_folder
         self.fs, embeddings_file_paths = get_file_list(embeddings_folder, "npy")
 
-        def file_to_header(filename):
-            try:
-                with self.fs.open(filename, "rb") as f:
-                    return (None, [filename, *read_numpy_header(f)])
-            except Exception as e:  # pylint: disable=broad-except
-                return e, (filename, None)
-
-        headers = []
-        count_before = 0
-        with ThreadPool(10) as p:
-            for err, c in tqdm(p.imap(file_to_header, embeddings_file_paths), total=len(embeddings_file_paths)):
-                if err is not None:
-                    raise Exception(f"failed reading file {c[0]}") from err
-                if c[1] == 0:
-                    continue
-                headers.append([*c[0:2], count_before, *c[2:]])
-                count_before += c[1]
-
+        headers = get_numpy_headers(embeddings_file_paths, self.fs)
         self.headers = pd.DataFrame(
             headers,
             columns=["filename", "count", "count_before", "dimension", "dtype", "header_offset", "byte_per_item"],

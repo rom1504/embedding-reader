@@ -34,7 +34,7 @@ def get_prompt_embeddings():
     model, _ = clip.load("ViT-L/14", device=device)
 
     CLASSES = get_coco_classes()
-    text = clip.tokenize(["a " + c for c in CLASSES]).to(device)
+    text = clip.tokenize(["A photo of a " + c for c in CLASSES]).to(device)
 
     with torch.no_grad():
         text_features = model.encode_text(text)
@@ -60,7 +60,7 @@ def compute_hash(url, text):
 def main(
     embedding_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/",
     metadata_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/laion2B-en-metadata/",
-    output_folder="/media/hd2/coco",
+    output_folder="/media/hd2/cocov2",
     batch_size=10**6,
     end=None,
 ):

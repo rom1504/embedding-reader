@@ -66,7 +66,7 @@ class ParquetReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError(f"No embeddings found in folder {embeddings_folder}")
-        
+
         if len(self.dimension) == 1:
             self.byte_per_item = 4 * self.dimension[0]
         else:

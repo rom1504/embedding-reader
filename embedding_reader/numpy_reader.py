@@ -24,14 +24,14 @@ def read_numpy_header(f):
     f.seek(0)
     file_size = f.size if isinstance(f.size, int) else f.size()
     first_line = f.read(min(file_size, 300)).split(b"\n")[0]
-    
+
     result = re.search(r"'shape': \(([0-9]+), ([0-9]+)(?:,\W([0-9]+))?\)", str(first_line))
     captures = result.groups()
     if captures[2] is not None:
         shape = (int(captures[0]), int(captures[1]), int(captures[2]))
     else:
         shape = (int(captures[0]), int(captures[1]))
-    
+
     dtype = re.search(r"'descr': '([<f0-9]+)'", str(first_line)).group(1)
     end = len(first_line) + 1  # the first line content and the endline
     f.seek(0)
@@ -81,9 +81,8 @@ class NumpyReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError(f"No embeddings found in folder {embeddings_folder}")
-        
+
         self.dimension = self.headers.iloc[0]["dimension"]
-        
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item

@@ -24,13 +24,19 @@ def read_numpy_header(f):
     f.seek(0)
     file_size = f.size if isinstance(f.size, int) else f.size()
     first_line = f.read(min(file_size, 300)).split(b"\n")[0]
-    result = re.search(r"'shape': \(([0-9]+), ([0-9]+)\)", str(first_line))
-    shape = (int(result.group(1)), int(result.group(2)))
+    
+    result = re.search(r"'shape': \(([0-9]+), ([0-9]+)(?:,\W([0-9]+))?\)", str(first_line))
+    captures = result.groups()
+    if captures[2] is not None:
+        shape = (int(captures[0]), int(captures[1]), int(captures[2]))
+    else:
+        shape = (int(captures[0]), int(captures[1]))
+    
     dtype = re.search(r"'descr': '([<f0-9]+)'", str(first_line)).group(1)
     end = len(first_line) + 1  # the first line content and the endline
     f.seek(0)
     byte_per_item = np.dtype(dtype).itemsize * shape[1]
-    return (shape[0], shape[1], dtype, end, byte_per_item)
+    return (shape[0], shape[1:], dtype, end, byte_per_item)
 
 
 def file_to_header(filename, fs):
@@ -75,7 +81,9 @@ class NumpyReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError(f"No embeddings found in folder {embeddings_folder}")
-        self.dimension = int(self.headers.iloc[0]["dimension"])
+        
+        self.dimension = self.headers.iloc[0]["dimension"]
+        
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
@@ -120,7 +128,7 @@ class NumpyReader:
                         None,
                         (
                             np.frombuffer(f.read(length * self.byte_per_item), dtype=self.dtype).reshape(
-                                (length, self.dimension)
+                                (length, *self.dimension)
                             ),
                             piece,
                         ),
@@ -153,7 +161,7 @@ class NumpyReader:
                     ) from err
                 try:
                     if batch is None:
-                        batch = np.empty((piece.batch_length, self.dimension), "float32")
+                        batch = np.empty((piece.batch_length, *self.dimension), "float32")
 
                     batch[batch_offset : (batch_offset + piece.piece_length)] = data
                     batch_offset += data.shape[0]

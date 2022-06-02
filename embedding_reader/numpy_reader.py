@@ -36,6 +36,10 @@ def read_numpy_header(f):
     end = len(first_line) + 1  # the first line content and the endline
     f.seek(0)
     byte_per_item = np.dtype(dtype).itemsize * shape[1]
+    
+    if len(shape) > 2:
+        byte_per_item *= shape[2]
+    
     return (shape[0], shape[1:], dtype, end, byte_per_item)
 
 

@@ -47,7 +47,7 @@ class ParquetNumpyReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError("No embeddings found in folder {embeddings_folder}")
-        self.dimension = int(self.headers.iloc[0]["dimension"])
+        self.dimension = self.headers.iloc[0]["dimension"]
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
@@ -98,7 +98,7 @@ class ParquetNumpyReader:
                         None,
                         (
                             np.frombuffer(f.read(length * self.byte_per_item), dtype=self.dtype).reshape(
-                                (length, self.dimension)
+                                (length, *self.dimension)
                             ),
                             ids,
                             piece,
@@ -155,7 +155,7 @@ class ParquetNumpyReader:
                     ) from err
                 try:
                     if batch is None:
-                        batch = np.empty((piece.batch_length, self.dimension), "float32")
+                        batch = np.empty((piece.batch_length, *self.dimension), "float32")
                         batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names)), dtype="object")
 
                     batch[batch_offset : (batch_offset + piece.piece_length)] = data

@@ -33,7 +33,7 @@ def test_embedding_reader(file_format, collection_kind, tmpdir):
         metadata_folder=tmp_dir,
     )
 
-    assert embedding_reader.dimension == dim
+    assert embedding_reader.dimension == (dim,)
     assert embedding_reader.count == sum(sizes)
     assert embedding_reader.byte_per_item == dim * 4
     assert embedding_reader.total_size == embedding_reader.count * embedding_reader.byte_per_item

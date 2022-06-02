@@ -56,7 +56,7 @@ class ParquetReader:
                 batches = parquet_file.iter_batches(batch_size=1, columns=[embedding_column_name])
                 try:
                     embedding = next(batches).to_pandas()[embedding_column_name].to_numpy()[0]
-                    self.dimension = int(embedding.shape[0])
+                    self.dimension = embedding.shape
                     break
                 except StopIteration:
                     continue
@@ -66,7 +66,11 @@ class ParquetReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError(f"No embeddings found in folder {embeddings_folder}")
-        self.byte_per_item = 4 * self.dimension
+
+        if len(self.dimension) == 1:
+            self.byte_per_item = 4 * self.dimension[0]
+        else:
+            self.byte_per_item = 4 * (self.dimension[0] * self.dimension[1])
 
         self.total_size = self.count * self.byte_per_item
 
@@ -142,7 +146,7 @@ class ParquetReader:
                     ) from err
                 try:
                     if batch is None:
-                        batch = np.empty((piece.batch_length, self.dimension), "float32")
+                        batch = np.empty((piece.batch_length, *self.dimension), "float32")
                         if self.metadata_column_names is not None:
                             batch_meta = np.empty((piece.batch_length, len(self.metadata_column_names)), dtype="object")
                     batch[batch_offset : (batch_offset + piece.piece_length)] = data

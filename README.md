@@ -116,7 +116,7 @@ total number of embedding in this folder
 
 #### .dimension
 
-dimension of one embedding
+dimension of one embedding (tuple of `(dim,)` for 1d embeddings or `(dim1, dim2)` for 2d embeddings)
 
 #### .byte_per_item
 

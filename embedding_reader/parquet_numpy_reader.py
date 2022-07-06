@@ -47,12 +47,23 @@ class ParquetNumpyReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError("No embeddings found in folder {embeddings_folder}")
+        self.nb_files = len(self.headers["count"])
         self.dimension = int(self.headers.iloc[0]["dimension"])
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
+        self.average_file_size = self.total_size / self.nb_files
 
-    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
+    def __call__(
+        self,
+        batch_size,
+        start=0,
+        end=None,
+        max_piece_size=None,
+        parallel_pieces=None,
+        show_progress=True,
+        max_ram_usage_in_bytes=2**31,
+    ):
         if end is None:
             end = self.count
 
@@ -62,9 +73,14 @@ class ParquetNumpyReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            max_piece_size = max(int(50 * 10**6 / (self.byte_per_item)), 1)
+            # Take x embeddings per pieces so that the max piece size is max(50MB, size of a batch)
+            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), batch_size, 1)
+
         if parallel_pieces is None:
-            parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
+            # read_piece function can load the whole file in memory to take only max_piece_size bytes
+            read_piece_ram_usage = self.average_file_size
+            # We try to parallelize a maximum as long at it fits the ram constraint
+            parallel_pieces = min(max(int(math.ceil(max_ram_usage_in_bytes / read_piece_ram_usage)), 1), 50)
 
         metadata_columns = ["metadata_path", "header_offset"]
         pieces = build_pieces(

@@ -126,16 +126,25 @@ size of one embedding in bytes
 
 size in bytes of the collection
 
-#### __call__(batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=10, show_progress=True)
+#### .nb_files
+
+total number of embedding files in this folder
+
+#### .average_file_size
+
+average size in bytes of the an embedding file of the collection
+
+#### __call__(batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True, max_ram_usage_in_bytes=2**31)
 
 Produces an iterator that yields tuples (data, meta) with the given batch_size
 
 * **batch_size** amount of embeddings in one batch. (*required*)
 * **start** start of the subset of the collection to read. (default *0*)
 * **end** end of the subset of the collection to read. (default *end of collection*)
-* **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *number of embedding for 50MB*)
-* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *max(10, min amount of pieces to build a batch)*)
+* **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *max(number of embedding for 50MB, batch size in MB)*)
+* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *min(round(max_ram_usage_in_bytes/max_piece_size), 50)*)
 * **show_progress** Display a tqdm bar with the number of pieces done. (default *True*)
+* **max_ram_usage_in_bytes** Constraint the ram usage of embedding reader. The exact ram usage is *min(max_ram_usage_in_bytes, size of a batch in bytes)*. (default 2GB)
 
 
 ## Architecture notes and benchmark
@@ -145,7 +154,7 @@ These pieces metadata can then be used to fetch in parallel these pieces, which 
 
 In practice, it has been observed speed of up to 100MB/s when fetching embeddings from s3, 1GB/s when fetching from an nvme drive.
 That means reading 400GB of embeddings in 8 minutes (400M embeddings in float16 and dimension 512)
-The memory usage stays low and flat thanks to the absence of copy. Decreasing the batch size decreases the amount of memory consumed.
+The memory usage stays low and flat thanks to the absence of copy. Decreasing the batch size decreases the amount of memory consumed, you can also set max_ram_usage_in_bytes to have a better control on the ram usage.
 
 
 ## For development

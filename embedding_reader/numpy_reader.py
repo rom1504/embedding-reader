@@ -80,7 +80,7 @@ class NumpyReader:
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
-        self.average_file_size = self.total_size / self.nb_files
+        self.max_file_size = max(self.headers["count"]) * self.byte_per_item
 
     def __call__(
         self,
@@ -106,7 +106,7 @@ class NumpyReader:
 
         if parallel_pieces is None:
             # read_piece function can load the whole file in memory to take only max_piece_size bytes
-            read_piece_ram_usage = self.average_file_size
+            read_piece_ram_usage = self.max_file_size
             # We try to parallelize a maximum as long at it fits the ram constraint
             parallel_pieces = min(max(int(math.ceil(max_ram_usage_in_bytes / read_piece_ram_usage)), 1), 50)
 

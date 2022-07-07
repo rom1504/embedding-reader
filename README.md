@@ -130,9 +130,9 @@ size in bytes of the collection
 
 total number of embedding files in this folder
 
-#### .average_file_size
+#### .max_file_size
 
-average size in bytes of the an embedding file of the collection
+max size in bytes of the embedding files of the collection
 
 #### __call__(batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True, max_ram_usage_in_bytes=2**31)
 
@@ -144,13 +144,14 @@ Produces an iterator that yields tuples (data, meta) with the given batch_size
 * **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *max(number of embedding for 50MB, batch size in MB)*)
 * **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *min(round(max_ram_usage_in_bytes/max_piece_size), 50)*)
 * **show_progress** Display a tqdm bar with the number of pieces done. (default *True*)
-* **max_ram_usage_in_bytes** Constraint the ram usage of embedding reader. The exact ram usage is *min(max_ram_usage_in_bytes, size of a batch in bytes)*. (default 2GB)
+* **max_ram_usage_in_bytes** Constraint the ram usage of embedding reader. The exact max ram usage is *min(max_ram_usage_in_bytes, size of a batch in bytes)*. (default 2GB)
 
 
 ## Architecture notes and benchmark
 
 The main architecture choice of this lib is the `build_pieces` function that builds decently sizes pieces of embedding files (typically 50MB) initially.
 These pieces metadata can then be used to fetch in parallel these pieces, which are then used to build the embedding batches and provided to the user.
+In order to reach the maximal speed, it is better to read files of equal size. The number of threads used is constrained by the maximum size of your embeddings files: the lower the size, the more threads are used (you can also set a custom number of threads, but ram consumption will be higher).
 
 In practice, it has been observed speed of up to 100MB/s when fetching embeddings from s3, 1GB/s when fetching from an nvme drive.
 That means reading 400GB of embeddings in 8 minutes (400M embeddings in float16 and dimension 512)

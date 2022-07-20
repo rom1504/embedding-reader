@@ -62,7 +62,7 @@ class ParquetNumpyReader:
         max_piece_size=None,
         parallel_pieces=None,
         show_progress=True,
-        max_ram_usage_in_bytes=2**31,
+        max_ram_usage_in_bytes=2**32,
     ):
         if end is None:
             end = self.count
@@ -73,14 +73,19 @@ class ParquetNumpyReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            # Take x embeddings per pieces so that the max piece size is max(50MB, size of a batch)
-            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), batch_size, 1)
+            # Take x embeddings per pieces so that the max piece size is 50MB
+            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), 1)
 
         if parallel_pieces is None:
-            # read_piece function can load the whole file in memory to take only max_piece_size bytes
-            read_piece_ram_usage = self.max_file_size
-            # We try to parallelize a maximum as long at it fits the ram constraint
-            parallel_pieces = min(max(int(math.ceil(max_ram_usage_in_bytes / read_piece_ram_usage)), 1), 50)
+            # We try to parallelize a maximum as long at it fits the ram constraint.
+            # Since pieces are read with imap and that files are only opened once,
+            # we can estimate the ram usage for n pieces read in parallel as being (n*max_piece_size // self.max_file_size + 1 ) * self.max_file_size
+            parallel_pieces = min(
+                max(
+                    math.floor(max_ram_usage_in_bytes / min(max_piece_size * self.byte_per_item, self.max_file_size)), 1
+                ),
+                50,
+            )
 
         metadata_columns = ["metadata_path", "header_offset"]
         pieces = build_pieces(

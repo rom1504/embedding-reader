@@ -142,9 +142,9 @@ Produces an iterator that yields tuples (data, meta) with the given batch_size
 * **start** start of the subset of the collection to read. (default *0*)
 * **end** end of the subset of the collection to read. (default *end of collection*)
 * **max_piece_size** maximum size of a piece. The default value works for most cases. Increase or decrease based on your file system performances (default *max(number of embedding for 50MB, batch size in MB)*)
-* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *min(round(max_ram_usage_in_bytes/max_piece_size), 50)*)
+* **parallel_pieces** Number of pieces to read in parallel. Increase or decrease depending on your filesystem. (default *~min(round(max_ram_usage_in_bytes/max_piece_size*byte_per_item), 50)*)
 * **show_progress** Display a tqdm bar with the number of pieces done. (default *True*)
-* **max_ram_usage_in_bytes** Constraint the ram usage of embedding reader. The exact max ram usage is *min(max_ram_usage_in_bytes, size of a batch in bytes)*. (default 2GB)
+* **max_ram_usage_in_bytes** Constraint the ram usage of embedding reader. The exact max ram usage is *min(max_ram_usage_in_bytes, size of a batch in bytes)*. (default 4GB)
 
 
 ## Architecture notes and benchmark

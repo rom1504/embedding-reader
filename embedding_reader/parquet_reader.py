@@ -25,10 +25,9 @@ def get_parquet_headers(fs, embeddings_file_paths):
     """get parquet headers"""
     headers = []
     count_before = 0
-    with ThreadPool(10) as p:
-        for err, c in tqdm(
-            p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=len(embeddings_file_paths)
-        ):
+    nb_files = len(embeddings_file_paths)
+    with ThreadPool(min(256, nb_files)) as p:  # Huge speedup with many threads
+        for err, c in tqdm(p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=nb_files):
             if err is not None:
                 raise Exception(f"failed reading file {c[0]}") from err
             if c[1] == 0:
@@ -79,7 +78,7 @@ class ParquetReader:
         max_piece_size=None,
         parallel_pieces=None,
         show_progress=True,
-        max_ram_usage_in_bytes=2**31,
+        max_ram_usage_in_bytes=2**32,
     ):
         if end is None:
             end = self.count
@@ -90,14 +89,22 @@ class ParquetReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            # Take x embeddings per pieces so that the max piece size is max(50MB, size of a batch)
-            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), batch_size, 1)
+            # Take x embeddings per pieces so that the max piece size is 50MB
+            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), 1)
 
         if parallel_pieces is None:
-            # read_piece function can load the whole file in memory to take only max_piece_size bytes
-            read_piece_ram_usage = self.max_file_size
-            # We try to parallelize a maximum as long at it fits the ram constraint
-            parallel_pieces = min(max(int(math.ceil(max_ram_usage_in_bytes / read_piece_ram_usage)), 1), 50)
+            # We try to parallelize a maximum as long at it fits the ram constraint.
+            # Since pieces are read with imap and that files are only opened once,
+            # we can estimate the ram usage for n pieces read in parallel as being (n*max_piece_size // self.max_file_size + 1 ) * self.max_file_size
+            parallel_pieces = min(
+                max(
+                    math.floor(max_ram_usage_in_bytes / min(max_piece_size * self.byte_per_item, self.max_file_size)), 1
+                ),
+                50,
+            )
+
+        print("parallel_pieces", parallel_pieces)
+
         pieces = build_pieces(
             headers=self.headers, batch_size=batch_size, start=start, end=end, max_piece_size=max_piece_size
         )
@@ -105,40 +112,50 @@ class ParquetReader:
         cols = PIECES_BASE_COLUMNS
         Piece = namedtuple("Count", cols)
 
-        def read_piece(piece):
+        def read_piece(t):
+            (piece, table) = t
             try:
                 start = piece.piece_start
                 end = piece.piece_end
-                path = piece.filename
 
-                with self.fs.open(path, "rb") as f:
-                    length = end - start
-                    table = pq.read_table(f, use_threads=False)
-                    id_columns = self.metadata_column_names
-                    table_slice = table.slice(start, length)
-                    embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
-                    ids = table_slice.select(id_columns).to_pandas() if id_columns else None
+                length = end - start
+                id_columns = self.metadata_column_names
+                table_slice = table.slice(start, length)
+                ids = table_slice.select(id_columns).to_pandas() if id_columns else None
 
-                    return (
-                        None,
-                        (
-                            np.stack(embeddings_raw),
-                            ids,
-                            piece,
-                        ),
-                    )
+                embeddings_raw = table_slice[self.embedding_column_name].to_numpy()
+
+                return (
+                    None,
+                    (
+                        np.stack(embeddings_raw),
+                        ids,
+                        piece,
+                    ),
+                )
+
             except Exception as e:  # pylint: disable=broad-except
                 return e, (None, None, piece)
 
         semaphore = Semaphore(parallel_pieces)
         stopped = False
 
-        def piece_generator(pieces):
+        # from path to table and file
+        open_parquet_files = {}
+
+        def piece_generator(pieces, open_parquet_files):
+            current_parquet_file = None
             for piece in (Piece(*parts) for parts in zip(*[pieces[col] for col in cols])):
                 if stopped:
                     break
                 semaphore.acquire()  # pylint: disable=consider-using-with
-                yield piece
+                if piece.filename not in open_parquet_files:
+                    file = self.fs.open(piece.filename, "rb")
+                    table = pq.read_table(file, use_threads=True)
+                    open_parquet_files[piece.filename] = {"file": file, "table": table}
+                if current_parquet_file != piece.filename:
+                    current_parquet_file = piece.filename
+                yield (piece, open_parquet_files[piece.filename]["table"])
 
         batch = None
         batch_meta = None
@@ -147,7 +164,8 @@ class ParquetReader:
         if show_progress:
             pbar = tqdm(total=len(pieces))
         with ThreadPool(parallel_pieces) as p:
-            for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces)):
+            current_parquet_file = None
+            for err, (data, meta, piece) in p.imap(read_piece, piece_generator(pieces, open_parquet_files)):
                 if err is not None:
                     stopped = True
                     semaphore.release()
@@ -176,6 +194,11 @@ class ParquetReader:
                         if self.metadata_column_names is not None:
                             batch_meta = None
                         batch_offset = 0
+                    if current_parquet_file != piece.filename:
+                        if current_parquet_file is not None:
+                            open_parquet_files[current_parquet_file]["file"].close()
+                            del open_parquet_files[current_parquet_file]
+                        current_parquet_file = piece.filename
 
                     if show_progress:
                         pbar.update(1)
@@ -184,6 +207,9 @@ class ParquetReader:
                     stopped = True
                     semaphore.release()
                     raise e
+            if current_parquet_file is not None:
+                open_parquet_files[current_parquet_file]["file"].close()
+                del open_parquet_files[current_parquet_file]
 
         if show_progress:
             pbar.close()

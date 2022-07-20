@@ -33,5 +33,16 @@ class EmbeddingReader:
         self.total_size = self.reader.total_size
         self.embeddings_folder = embeddings_folder
 
-    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
-        return self.reader(batch_size, start, end, max_piece_size, parallel_pieces, show_progress)
+    def __call__(
+        self,
+        batch_size,
+        start=0,
+        end=None,
+        max_piece_size=None,
+        parallel_pieces=None,
+        show_progress=True,
+        max_ram_usage_in_bytes=2**32,
+    ):
+        return self.reader(
+            batch_size, start, end, max_piece_size, parallel_pieces, show_progress, max_ram_usage_in_bytes
+        )

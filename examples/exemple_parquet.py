@@ -2,7 +2,7 @@ from embedding_reader import EmbeddingReader
 
 print("Starting")
 embedding_reader = EmbeddingReader(
-    embeddings_folder="hdfs://root/user/cailimage/prod/image-text-pipeline/EU/prediction/clip/embeddings/with_image=true",
+    embeddings_folder="hdfs://root/user/toto/embeddings/laion1B-nolang/img_embs",
     embedding_column="image_embs",
     file_format="parquet",
 )

@@ -26,14 +26,15 @@ def get_parquet_headers(fs, embeddings_file_paths):
     headers = []
     count_before = 0
     nb_files = len(embeddings_file_paths)
-    with ThreadPool(min(256, nb_files)) as p:  # Huge speedup with many threads
-        for err, c in tqdm(p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=nb_files):
-            if err is not None:
-                raise Exception(f"failed reading file {c[0]}") from err
-            if c[1] == 0:
-                continue
-            headers.append([*c, count_before])
-            count_before += c[1]
+    if nb_files:
+        with ThreadPool(min(256, nb_files)) as p:  # Huge speedup with many threads
+            for err, c in tqdm(p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=nb_files):
+                if err is not None:
+                    raise Exception(f"failed reading file {c[0]}") from err
+                if c[1] == 0:
+                    continue
+                headers.append([*c, count_before])
+                count_before += c[1]
 
     return headers
 
@@ -102,8 +103,6 @@ class ParquetReader:
                 ),
                 50,
             )
-
-        print("parallel_pieces", parallel_pieces)
 
         pieces = build_pieces(
             headers=self.headers, batch_size=batch_size, start=start, end=end, max_piece_size=max_piece_size

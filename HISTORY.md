@@ -1,3 +1,7 @@
+## 1.5.0
+
+* Add max_ram_usage_in_bytes parameter for better control of ram usage (thanks @victor-paltz)
+
 ## 1.4.2
 
 * Create get headers function in numpy and parquet readers 

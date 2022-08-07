@@ -24,15 +24,16 @@ import torch.nn as nn
 from os.path import expanduser  # pylint: disable=import-outside-toplevel
 from urllib.request import urlretrieve  # pylint: disable=import-outside-toplevel
 
+
 def get_aesthetic_model(clip_model="vit_l_14"):
     """load the aethetic model"""
     home = expanduser("~")
     cache_folder = home + "/.cache/emb_reader"
-    path_to_model = cache_folder + "/sa_0_4_"+clip_model+"_linear.pth"
+    path_to_model = cache_folder + "/sa_0_4_" + clip_model + "_linear.pth"
     if not os.path.exists(path_to_model):
         os.makedirs(cache_folder, exist_ok=True)
         url_model = (
-            "https://github.com/LAION-AI/aesthetic-predictor/blob/main/sa_0_4_"+clip_model+"_linear.pth?raw=true"
+            "https://github.com/LAION-AI/aesthetic-predictor/blob/main/sa_0_4_" + clip_model + "_linear.pth?raw=true"
         )
         urlretrieve(url_model, path_to_model)
     if clip_model == "vit_l_14":
@@ -66,7 +67,7 @@ def main(
     output_folder="/media/hd2/aethetic_emb_other",
     batch_size=10**6,
     end=10**7,
-    model="vit_l_14"
+    model="vit_l_14",
 ):
     """main function"""
     reader = EmbeddingReader(embedding_folder, file_format="npy")

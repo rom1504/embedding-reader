@@ -47,12 +47,23 @@ class ParquetNumpyReader:
         self.count = self.headers["count"].sum()
         if self.count == 0:
             raise ValueError("No embeddings found in folder {embeddings_folder}")
+        self.nb_files = len(self.headers["count"])
         self.dimension = int(self.headers.iloc[0]["dimension"])
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]
         self.dtype = self.headers.iloc[0]["dtype"]
         self.total_size = self.count * self.byte_per_item
+        self.max_file_size = max(self.headers["count"]) * self.byte_per_item
 
-    def __call__(self, batch_size, start=0, end=None, max_piece_size=None, parallel_pieces=None, show_progress=True):
+    def __call__(
+        self,
+        batch_size,
+        start=0,
+        end=None,
+        max_piece_size=None,
+        parallel_pieces=None,
+        show_progress=True,
+        max_ram_usage_in_bytes=2**32,
+    ):
         if end is None:
             end = self.count
 
@@ -62,9 +73,19 @@ class ParquetNumpyReader:
             batch_size = end - start
 
         if max_piece_size is None:
-            max_piece_size = max(int(50 * 10**6 / (self.byte_per_item)), 1)
+            # Take x embeddings per pieces so that the max piece size is 50MB
+            max_piece_size = max(int(50 * 10**6 / self.byte_per_item), 1)
+
         if parallel_pieces is None:
-            parallel_pieces = max(math.ceil(batch_size / max_piece_size), 10)
+            # We try to parallelize a maximum as long at it fits the ram constraint.
+            # Since pieces are read with imap and that files are only opened once,
+            # we can estimate the ram usage for n pieces read in parallel as being (n*max_piece_size // self.max_file_size + 1 ) * self.max_file_size
+            parallel_pieces = min(
+                max(
+                    math.floor(max_ram_usage_in_bytes / min(max_piece_size * self.byte_per_item, self.max_file_size)), 1
+                ),
+                50,
+            )
 
         metadata_columns = ["metadata_path", "header_offset"]
         pieces = build_pieces(

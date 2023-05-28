@@ -41,7 +41,7 @@ def _get_file_list(
     """Get the file system and all the file paths that matches `file_format` given a single path."""
     path = make_path_absolute(path)
     fs, path_in_fs = fsspec.core.url_to_fs(path)
-    prefix = path[: path.index(path_in_fs)]
+    prefix = path[: -len(path_in_fs)]
     glob_pattern = path.rstrip("/") + f"/**.{file_format}"
     file_paths = fs.glob(glob_pattern)
     if sort_result:

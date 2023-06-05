@@ -2,4 +2,4 @@ tqdm>=4.62.3,<5
 fsspec>=2022.1.0
 numpy>=1.19.5,<2
 pandas>=1.1.5,<2
-pyarrow>=6.0.1,<8
+pyarrow>=6.0.1,<13

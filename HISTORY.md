@@ -1,3 +1,8 @@
+## 1.6.0
+
+* Update dependencies versions.
+* Fix glob path in get_file_list (thanks @bencwallace)
+
 ## 1.5.1
 
 * Fix to ValueError raised on Windows when this function is run

@@ -1,3 +1,7 @@
+## 1.6.1
+
+* Fix missing format string in error
+
 ## 1.6.0
 
 * Update dependencies versions.

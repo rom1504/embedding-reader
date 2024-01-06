@@ -46,7 +46,7 @@ class ParquetNumpyReader:
 
         self.count = self.headers["count"].sum()
         if self.count == 0:
-            raise ValueError("No embeddings found in folder {embeddings_folder}")
+            raise ValueError(f"No embeddings found in folder {embeddings_folder}")
         self.nb_files = len(self.headers["count"])
         self.dimension = int(self.headers.iloc[0]["dimension"])
         self.byte_per_item = self.headers.iloc[0]["byte_per_item"]

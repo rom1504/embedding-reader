@@ -42,7 +42,7 @@ def _get_file_list(
     path = make_path_absolute(path)
     fs, path_in_fs = fsspec.core.url_to_fs(path)
     prefix = path[: -len(path_in_fs)]
-    glob_pattern = path.rstrip("/") + f"/**.{file_format}"
+    glob_pattern = path.rstrip("/") + f"/**/*.{file_format}"
     file_paths = fs.glob(glob_pattern)
     if sort_result:
         file_paths.sort()

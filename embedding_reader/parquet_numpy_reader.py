@@ -171,7 +171,7 @@ class ParquetNumpyReader:
                 if err is not None:
                     stopped = True
                     semaphore.release()
-                    raise Exception(
+                    raise ValueError(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
                     ) from err
                 try:

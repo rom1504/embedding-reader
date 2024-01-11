@@ -30,7 +30,7 @@ def get_parquet_headers(fs, embeddings_file_paths):
         with ThreadPool(min(256, nb_files)) as p:  # Huge speedup with many threads
             for err, c in tqdm(p.imap(lambda fp: file_to_header(fp, fs), embeddings_file_paths), total=nb_files):
                 if err is not None:
-                    raise Exception(f"failed reading file {c[0]}") from err
+                    raise ValueError(f"failed reading file {c[0]}") from err
                 if c[1] == 0:
                     continue
                 headers.append([*c, count_before])
@@ -168,7 +168,7 @@ class ParquetReader:
                 if err is not None:
                     stopped = True
                     semaphore.release()
-                    raise Exception(
+                    raise ValueError(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
                     ) from err
                 try:

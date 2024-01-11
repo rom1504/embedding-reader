@@ -50,7 +50,7 @@ def get_numpy_headers(embeddings_file_paths, fs):
             p.imap(lambda f: file_to_header(f, fs), embeddings_file_paths), total=len(embeddings_file_paths)
         ):
             if err is not None:
-                raise Exception(f"failed reading file {c[0]}") from err
+                raise ValueError(f"failed reading file {c[0]}") from err
             if c[1] == 0:
                 continue
             headers.append([*c[0:2], count_before, *c[2:]])
@@ -169,7 +169,7 @@ class NumpyReader:
                 if err is not None:
                     stopped = True
                     semaphore.release()
-                    raise Exception(
+                    raise ValueError(
                         f"failed reading file {piece.filename} from {piece.piece_start} to {piece.piece_end}"
                     ) from err
                 try:

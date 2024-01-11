@@ -80,7 +80,6 @@ def build_test_collection_parquet_npy(
     consecutive_ids=False,
     kind="random",
 ):
-
     tmp_path = tmpdir.mkdir(tmpdir_name)
     sizes = [random.randint(min_size, max_size) for _ in range(nb_files)]
     all_dfs = []

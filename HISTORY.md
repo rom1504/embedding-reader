@@ -1,3 +1,7 @@
+## 1.7.0
+
+* update pyarrow
+
 ## 1.6.1
 
 * Fix missing format string in error

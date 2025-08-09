@@ -1,3 +1,7 @@
+## 1.8.1
+
+* Update PyArrow version range to >=6.0.1,<30 for better compatibility
+
 ## 1.8.0
 
 * Update Python support to 3.10, 3.11, 3.12

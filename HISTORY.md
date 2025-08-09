@@ -1,3 +1,11 @@
+## 1.8.0
+
+* Update Python support to 3.10, 3.11, 3.12
+* Update PyArrow to >=16.0.0 for NumPy 2.0+ compatibility
+* Remove NumPy version cap to support NumPy 2.0+
+* Update development dependencies (MyPy 1.13.0, Black 24.1.1)
+* Update CI configuration
+
 ## 1.7.0
 
 * update pyarrow
